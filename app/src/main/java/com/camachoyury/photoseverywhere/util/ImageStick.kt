@@ -8,6 +8,7 @@ import com.camachoyury.photoseverywhere.R
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import ru.gildor.coroutines.okhttp.await
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
@@ -18,19 +19,25 @@ class ImageStick(context: Context) {
     var memoryCache = MemoryCache()
     private var fileCache: FileCache = FileCache(context)
     private val imageViews = Collections.synchronizedMap(WeakHashMap<ImageView, String>())
-    val client = OkHttpClient()  // preinitialize the client
-
+    val client = OkHttpClient.Builder().build()
 
     fun showImage(url: String, imageView: ImageView) {
-
+        // url of image
+        val urlImage:URL = URL(url)
         imageViews[imageView] = url
         val bitmap = memoryCache[url]
 
         if (bitmap != null) imageView.setImageBitmap(bitmap) else {
 
+            val result: Deferred<Bitmap?> = GlobalScope.async {
+                urlImage.toBitmap()
+            }
             GlobalScope.launch(Dispatchers.Main) {
 
-                loadImage(PhotoToLoad(url, imageView))
+//                loadImage(PhotoToLoad(url, imageView))
+//                otherImage(url,imageView)
+                imageView.setImageBitmap(result.await())
+
                 imageView.setImageResource(R.drawable.jetpack_logo)
 
             }
@@ -99,19 +106,15 @@ class ImageStick(context: Context) {
     }
 
 
-    fun otherImage(url: String, imageView: ImageView){
-    val urlImage:URL = URL(url)
-        // async task to get bitmap from url
-        val result: Deferred<Bitmap?> = GlobalScope.async {
-            urlImage.toBitmap()
-        }
-        GlobalScope.launch(Dispatchers.Main) {
-            // show bitmap on image view when available
-            imageView.setImageBitmap(result.await())
 
-
-        }
-    }
+//   private suspend fun otherImage(url: String, imageView: ImageView){
+//
+//        val request = Request.Builder().url(url).build()
+//        val result = client.newCall(request).await()
+//        val bmp= BitmapFactory.decodeStream(result.body?.byteStream())
+//       imageView.setImageBitmap(bmp)
+//
+//    }
 
     private suspend fun decodeFile(f: File): Bitmap? = withContext(Dispatchers.IO) {
 
@@ -149,7 +152,6 @@ class ImageStick(context: Context) {
         }
          null
     }
-
 
     private fun copyStream(inputStream: InputStream, os: OutputStream) {
         val bufferSize = 1024

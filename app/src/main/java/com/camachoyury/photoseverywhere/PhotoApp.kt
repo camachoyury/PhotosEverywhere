@@ -10,5 +10,4 @@ class PhotoApp : Application() {
         super.onCreate()
     }
 
-
 }
