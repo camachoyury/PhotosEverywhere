@@ -6,12 +6,13 @@ import android.graphics.BitmapFactory
 import android.widget.ImageView
 import com.camachoyury.photoseverywhere.R
 import kotlinx.coroutines.*
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import okhttp3.*
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.*
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class ImageStick(context: Context) {
 
@@ -29,7 +30,6 @@ class ImageStick(context: Context) {
         if (bitmap != null) imageView.setImageBitmap(bitmap) else {
 
             GlobalScope.launch(Dispatchers.Main) {
-
                 loadImage(PhotoToLoad(url, imageView))
                 imageView.setImageResource(R.drawable.jetpack_logo)
 
@@ -84,9 +84,7 @@ class ImageStick(context: Context) {
 
     }
 
-
     class PhotoToLoad(var url: String, var imageView: ImageView)
-
     private fun imageViewReused(photoToLoad: PhotoToLoad): Boolean {
         val tag: String? = imageViews[photoToLoad.imageView]
         return tag == null || tag != photoToLoad.url
@@ -94,25 +92,25 @@ class ImageStick(context: Context) {
 
     suspend fun createBitmapFromUrl(url: String): Bitmap? = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(url).build()
-        val res = client.newCall(req).execute()
-         BitmapFactory.decodeStream(res.body?.byteStream())
-    }
+        val res = client.newCall(req).await()
 
-
-    fun otherImage(url: String, imageView: ImageView){
-    val urlImage:URL = URL(url)
-        // async task to get bitmap from url
         val result: Deferred<Bitmap?> = GlobalScope.async {
-            urlImage.toBitmap()
+            BitmapFactory.decodeStream(res.body?.byteStream())
         }
-        GlobalScope.launch(Dispatchers.Main) {
-            // show bitmap on image view when available
-            imageView.setImageBitmap(result.await())
+
+        result.await()
 
 
-        }
+
     }
 
+    internal suspend inline fun Call.await(): Response {
+        return suspendCancellableCoroutine { continuation ->
+            val callback = ContinuationCallback(this, continuation)
+            enqueue(callback)
+            continuation.invokeOnCancellation(callback)
+        }
+    }
     private suspend fun decodeFile(f: File): Bitmap? = withContext(Dispatchers.IO) {
 
         try {
@@ -174,3 +172,30 @@ fun URL.toBitmap(): Bitmap?{
         null
     }
 }
+
+
+
+internal class ContinuationCallback(
+    private val call: Call,
+    private val continuation: CancellableContinuation<Response>
+) : Callback, CompletionHandler {
+
+
+    override fun onResponse(call: Call, response: Response) {
+        continuation.resume(response)
+    }
+
+    override fun onFailure(call: Call, e: IOException) {
+        if (!call.isCanceled()) {
+            continuation.resumeWithException(e)
+        }
+    }
+
+    override fun invoke(cause: Throwable?) {
+        try {
+            call.cancel()
+        } catch (_: Throwable) {}
+    }
+}
+
+

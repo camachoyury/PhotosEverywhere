@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
 
         val imageStick = ImageStick(applicationContext)
 
-        imageStick.otherImage( "https://randomuser.me/api/portraits/med/men/31.jpg" ,binding.image)
+        imageStick.showImage( "https://randomuser.me/api/portraits/med/men/31.jpg" ,binding.image)
 
 
 
