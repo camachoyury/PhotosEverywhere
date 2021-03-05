@@ -7,6 +7,7 @@ import android.widget.ImageView
 import com.camachoyury.photoseverywhere.R
 import kotlinx.coroutines.*
 import okhttp3.*
+import okio.Source
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
@@ -31,7 +32,8 @@ class ImageStick(context: Context) {
 
             GlobalScope.launch(Dispatchers.Main) {
                 loadImage(PhotoToLoad(url, imageView))
-                imageView.setImageResource(R.drawable.jetpack_logo)
+                imageView.setImageResource(R.drawable.ic_android_black_24dp)
+
 
             }
         }
@@ -42,14 +44,25 @@ class ImageStick(context: Context) {
 
             if (!imageViewReused(photoToLoad)) {
 
-                val bmp = createBitmapFromUrl(photoToLoad.url)
-                if (bmp != null) {
-                    memoryCache.put(photoToLoad.url, bmp)
-                    photoToLoad.imageView.setImageBitmap(bmp)
-                } else
-                    photoToLoad.imageView.setImageResource(
-                        R.drawable.ic_launcher_background
-                    )
+
+//                val bmp = createBitmapFromUrl(photoToLoad.url)
+
+                val req = Request.Builder().url(photoToLoad.url).build()
+                val res = client.newCall(req).await()
+
+                val result: Deferred<Bitmap?> = GlobalScope.async {
+                    BitmapFactory.decodeStream(res.body?.byteStream())
+                }
+                photoToLoad.imageView.setImageBitmap(result.await())
+
+
+//                if (bmp != null) {
+//                    memoryCache.put(photoToLoad.url, bmp)
+//                    photoToLoad.imageView.setImageBitmap(bmp)
+//                } else
+//                    photoToLoad.imageView.setImageResource(
+//                        R.drawable.ic_launcher_background
+//                    )
             }
 
 
@@ -90,36 +103,67 @@ class ImageStick(context: Context) {
         return tag == null || tag != photoToLoad.url
     }
 
-    suspend fun createBitmapFromUrl(url: String): Bitmap? = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(url).build()
-        val res = client.newCall(req).await()
+//    suspend fun createBitmapFromUrl(url: String): Bitmap? {
+//        val req = Request.Builder().url(url).build()
+//        val res = client.newCall(req).await()
+//
+//        val result: Deferred<Bitmap?> = GlobalScope.async {
+//            BitmapFactory.decodeStream(res.body?.byteStream())
+//        }
+//        result.await()
+//
+//    }
 
-        val result: Deferred<Bitmap?> = GlobalScope.async {
-            BitmapFactory.decodeStream(res.body?.byteStream())
-        }
-
-        result.await()
 
 
-
-    }
-
-    internal suspend inline fun Call.await(): Response {
+    private suspend inline fun Call.await(): Response {
         return suspendCancellableCoroutine { continuation ->
             val callback = ContinuationCallback(this, continuation)
             enqueue(callback)
             continuation.invokeOnCancellation(callback)
         }
     }
+    private suspend fun decodeFiles(f: InputStream): Bitmap? = withContext(Dispatchers.IO) {
+
+        try {
+            //decode image size
+            val o = BitmapFactory.Options()
+            o.inJustDecodeBounds = true
+            BitmapFactory.decodeStream(f, null, o)
+
+            //Find the correct scale value. It should be the power of 2.
+            val requiredSize = 70
+            var widthTmp = o.outWidth
+            var heightTmp = o.outHeight
+            var scale = 1
+            while (true) {
+                if (widthTmp / 2 < requiredSize || heightTmp / 2 < requiredSize) break
+                widthTmp /= 2
+                heightTmp /= 2
+                scale *= 2
+            }
+
+            //decode with inSampleSize
+            val o2 = BitmapFactory.Options()
+            o2.inSampleSize = scale
+
+                BitmapFactory.decodeStream(f ,null, o2)
+
+        } catch (e: FileNotFoundException) {
+            e.printStackTrace()
+        }
+        null
+    }
+
+
     private suspend fun decodeFile(f: File): Bitmap? = withContext(Dispatchers.IO) {
 
         try {
             //decode image size
             val o = BitmapFactory.Options()
             o.inJustDecodeBounds = true
-            withContext(Dispatchers.Default) {
-                BitmapFactory.decodeStream(FileInputStream(f), null, o)
-            }
+            BitmapFactory.decodeStream(FileInputStream(f), null, o)
+
             //Find the correct scale value. It should be the power of 2.
             val requiredSize = 70
             var widthTmp = o.outWidth
@@ -197,5 +241,8 @@ internal class ContinuationCallback(
         } catch (_: Throwable) {}
     }
 }
+
+
+
 
 
