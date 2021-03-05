@@ -1,14 +1,10 @@
 package com.camachoyury.photoseverywhere
 
-import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.camachoyury.photoseverywhere.data.entities.Photo
 import com.camachoyury.photoseverywhere.databinding.ItemBinding
@@ -18,7 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.URL
-import java.util.*
 
 
 class CustomAdapter(
@@ -26,10 +21,7 @@ class CustomAdapter(
 ) :
     RecyclerView.Adapter<CustomAdapter.MyViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
-
         val binding =  ItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-
-        // set the view's size, margins, paddings and layout parameters
         return MyViewHolder(binding)
     }
 
@@ -41,10 +33,7 @@ class CustomAdapter(
                     loadImage(binding.image, picture.thumbnail)
                 }
                 binding.root.setOnClickListener {
-                    // open another activity on item click
-//            val intent = Intent(context, SecondActivity::class.java)
-//            intent.putExtra("image", personImages[position]) // put image data in Intent
-//            context.startActivity(intent) // start Intent
+
                 }
             }
 
@@ -66,23 +55,16 @@ class CustomAdapter(
         }
 
 }
-
-
 suspend fun loadImage(imageView: ImageView, url: String){
 
-    // url of image
     val urlImage: URL = URL(url)
     val result: Bitmap? = withContext(Dispatchers.IO){
+        println("   'runBlocking': I'm working in thread ${Thread.currentThread().name}")
         urlImage.toBitmap()
     }
-
     GlobalScope.launch(Dispatchers.Main){
-
         imageView.setImageBitmap(result)
     }
-
-
-
 }
 
 // extension function to get bitmap from url
