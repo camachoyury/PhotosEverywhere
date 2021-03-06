@@ -1,12 +1,8 @@
 package com.camachoyury.photoseverywhere
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.ImageView
-import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -20,8 +16,6 @@ import com.camachoyury.photoseverywhere.viewmodel.ScreenState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
-import java.io.IOException
-import java.net.URL
 
 
 @AndroidEntryPoint
@@ -30,7 +24,7 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: PhotosViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
     lateinit var recyclerView: RecyclerView
-    lateinit var adapter: CustomAdapter
+    lateinit var adapter: PhotosAdapter
 
     @InternalCoroutinesApi
     @ExperimentalCoroutinesApi
@@ -39,10 +33,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         binding = ActivityMainBinding.inflate(layoutInflater)
         val gridLayoutManager = GridLayoutManager(applicationContext, 3)
-        gridLayoutManager.orientation = LinearLayoutManager.HORIZONTAL; // set Horizontal Orientation
+        gridLayoutManager.orientation = LinearLayoutManager.HORIZONTAL;
         binding.photosList.layoutManager = gridLayoutManager
-        binding.photosList.adapter = CustomAdapter(emptyList())
+        adapter = PhotosAdapter(emptyList())
+        binding.photosList.adapter = adapter
 
+        viewModel.load()
 
         lifecycleScope.launchWhenStarted {
             viewModel.photos.collect {
@@ -57,15 +53,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        viewModel.load()
     }
 
-
     private fun updatePhotos(photos:List<Photo> ){
-        adapter = CustomAdapter(photos)
-        binding.photosList.adapter = adapter
+        adapter.submitList(photos)
+//        binding.photosList.adapter = adapter
         Log.d("Photo", photos[0].toString())
 
     }
-
 }

@@ -16,62 +16,56 @@ import java.io.IOException
 import java.net.URL
 
 
-class CustomAdapter(
-    var photos :List<Photo>
-) :
-    RecyclerView.Adapter<CustomAdapter.MyViewHolder>() {
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
-        val binding =  ItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MyViewHolder(binding)
+class PhotosAdapter(var photos: List<Photo>) : RecyclerView.Adapter<PhotosAdapter.PhotosViewHolder>() {
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotosViewHolder {
+        val binding = ItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return PhotosViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
-        with(holder){
-            with(photos[position]){
+    override fun onBindViewHolder(holder: PhotosViewHolder, position: Int) {
+        with(holder) {
+            with(photos[position]) {
                 binding.name.text = name.first
-                GlobalScope.launch {
+                GlobalScope.launch(Dispatchers.IO) {
                     loadImage(binding.image, picture.thumbnail)
                 }
                 binding.root.setOnClickListener {
-
                 }
             }
-
         }
+    }
 
-        // implement setOnClickListener event on item view.
-        holder.itemView.setOnClickListener {
-            // open another activity on item click
-//            val intent = Intent(context, SecondActivity::class.java)
-//            intent.putExtra("image", personImages[position]) // put image data in Intent
-//            context.startActivity(intent) // start Intent
-        }
+    fun submitList(updatedPhotos: List<Photo>) {
+        photos = updatedPhotos
+        notifyDataSetChanged()
     }
 
     override fun getItemCount() = photos.size
 
-    inner class MyViewHolder(val binding: ItemBinding) : RecyclerView.ViewHolder(binding.root) {
-
-        }
+    inner class PhotosViewHolder(val binding: ItemBinding) : RecyclerView.ViewHolder(binding.root)
 
 }
-suspend fun loadImage(imageView: ImageView, url: String){
+
+suspend fun loadImage(imageView: ImageView, url: String) {
 
     val urlImage: URL = URL(url)
-    val result: Bitmap? = withContext(Dispatchers.IO){
-        println("   'runBlocking': I'm working in thread ${Thread.currentThread().name}")
+    val result: Bitmap? = withContext(Dispatchers.IO) {
+        println("'runBlocking': I'm working in thread ${Thread.currentThread().name}")
         urlImage.toBitmap()
     }
-    GlobalScope.launch(Dispatchers.Main){
+
+    GlobalScope.launch(Dispatchers.Main) {
         imageView.setImageBitmap(result)
     }
 }
 
 // extension function to get bitmap from url
-private fun URL.toBitmap(): Bitmap?{
+private fun URL.toBitmap(): Bitmap? {
     return try {
         BitmapFactory.decodeStream(openStream())
-    }catch (e: IOException){
+    } catch (e: IOException) {
+        e.printStackTrace()
         null
     }
 }

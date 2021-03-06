@@ -6,6 +6,7 @@ import com.camachoyury.photoseverywhere.data.entities.Photo
 import com.camachoyury.photoseverywhere.data.repository.PhotosRepositoryImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +22,7 @@ class PhotosViewModel @Inject constructor(private val photosRepository: PhotosRe
 
     @ExperimentalCoroutinesApi
     fun load() = viewModelScope.launch {
-        _photos.value = ScreenState.Loading
+            _photos.value = ScreenState.Loading
         photosRepository
             .getPhotos()
             .collect {
