@@ -6,12 +6,14 @@ import android.graphics.BitmapFactory
 import android.widget.ImageView
 import com.camachoyury.photoseverywhere.R
 import kotlinx.coroutines.*
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import okhttp3.*
+import okio.Source
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.*
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class ImageStick(context: Context) {
 
@@ -29,9 +31,9 @@ class ImageStick(context: Context) {
         if (bitmap != null) imageView.setImageBitmap(bitmap) else {
 
             GlobalScope.launch(Dispatchers.Main) {
-
                 loadImage(PhotoToLoad(url, imageView))
-                imageView.setImageResource(R.drawable.jetpack_logo)
+                imageView.setImageResource(R.drawable.ic_android_black_24dp)
+
 
             }
         }
@@ -42,14 +44,25 @@ class ImageStick(context: Context) {
 
             if (!imageViewReused(photoToLoad)) {
 
-                val bmp = createBitmapFromUrl(photoToLoad.url)
-                if (bmp != null) {
-                    memoryCache.put(photoToLoad.url, bmp)
-                    photoToLoad.imageView.setImageBitmap(bmp)
-                } else
-                    photoToLoad.imageView.setImageResource(
-                        R.drawable.ic_launcher_background
-                    )
+
+//                val bmp = createBitmapFromUrl(photoToLoad.url)
+
+                val req = Request.Builder().url(photoToLoad.url).build()
+                val res = client.newCall(req).await()
+
+                val result: Deferred<Bitmap?> = GlobalScope.async {
+                    BitmapFactory.decodeStream(res.body?.byteStream())
+                }
+                photoToLoad.imageView.setImageBitmap(result.await())
+
+
+//                if (bmp != null) {
+//                    memoryCache.put(photoToLoad.url, bmp)
+//                    photoToLoad.imageView.setImageBitmap(bmp)
+//                } else
+//                    photoToLoad.imageView.setImageResource(
+//                        R.drawable.ic_launcher_background
+//                    )
             }
 
 
@@ -84,34 +97,64 @@ class ImageStick(context: Context) {
 
     }
 
-
     class PhotoToLoad(var url: String, var imageView: ImageView)
-
     private fun imageViewReused(photoToLoad: PhotoToLoad): Boolean {
         val tag: String? = imageViews[photoToLoad.imageView]
         return tag == null || tag != photoToLoad.url
     }
 
-    suspend fun createBitmapFromUrl(url: String): Bitmap? = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(url).build()
-        val res = client.newCall(req).execute()
-         BitmapFactory.decodeStream(res.body?.byteStream())
+//    suspend fun createBitmapFromUrl(url: String): Bitmap? {
+//        val req = Request.Builder().url(url).build()
+//        val res = client.newCall(req).await()
+//
+//        val result: Deferred<Bitmap?> = GlobalScope.async {
+//            BitmapFactory.decodeStream(res.body?.byteStream())
+//        }
+//        result.await()
+//
+//    }
+
+
+
+    private suspend inline fun Call.await(): Response {
+        return suspendCancellableCoroutine { continuation ->
+            val callback = ContinuationCallback(this, continuation)
+            enqueue(callback)
+            continuation.invokeOnCancellation(callback)
+        }
+    }
+    private suspend fun decodeFiles(f: InputStream): Bitmap? = withContext(Dispatchers.IO) {
+
+        try {
+            //decode image size
+            val o = BitmapFactory.Options()
+            o.inJustDecodeBounds = true
+            BitmapFactory.decodeStream(f, null, o)
+
+            //Find the correct scale value. It should be the power of 2.
+            val requiredSize = 70
+            var widthTmp = o.outWidth
+            var heightTmp = o.outHeight
+            var scale = 1
+            while (true) {
+                if (widthTmp / 2 < requiredSize || heightTmp / 2 < requiredSize) break
+                widthTmp /= 2
+                heightTmp /= 2
+                scale *= 2
+            }
+
+            //decode with inSampleSize
+            val o2 = BitmapFactory.Options()
+            o2.inSampleSize = scale
+
+                BitmapFactory.decodeStream(f ,null, o2)
+
+        } catch (e: FileNotFoundException) {
+            e.printStackTrace()
+        }
+        null
     }
 
-
-    fun otherImage(url: String, imageView: ImageView){
-    val urlImage:URL = URL(url)
-        // async task to get bitmap from url
-        val result: Deferred<Bitmap?> = GlobalScope.async {
-            urlImage.toBitmap()
-        }
-        GlobalScope.launch(Dispatchers.Main) {
-            // show bitmap on image view when available
-            imageView.setImageBitmap(result.await())
-
-
-        }
-    }
 
     private suspend fun decodeFile(f: File): Bitmap? = withContext(Dispatchers.IO) {
 
@@ -119,9 +162,8 @@ class ImageStick(context: Context) {
             //decode image size
             val o = BitmapFactory.Options()
             o.inJustDecodeBounds = true
-            withContext(Dispatchers.Default) {
-                BitmapFactory.decodeStream(FileInputStream(f), null, o)
-            }
+            BitmapFactory.decodeStream(FileInputStream(f), null, o)
+
             //Find the correct scale value. It should be the power of 2.
             val requiredSize = 70
             var widthTmp = o.outWidth
@@ -174,3 +216,33 @@ fun URL.toBitmap(): Bitmap?{
         null
     }
 }
+
+
+
+internal class ContinuationCallback(
+    private val call: Call,
+    private val continuation: CancellableContinuation<Response>
+) : Callback, CompletionHandler {
+
+
+    override fun onResponse(call: Call, response: Response) {
+        continuation.resume(response)
+    }
+
+    override fun onFailure(call: Call, e: IOException) {
+        if (!call.isCanceled()) {
+            continuation.resumeWithException(e)
+        }
+    }
+
+    override fun invoke(cause: Throwable?) {
+        try {
+            call.cancel()
+        } catch (_: Throwable) {}
+    }
+}
+
+
+
+
+
