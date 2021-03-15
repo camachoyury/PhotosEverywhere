@@ -1,6 +1,5 @@
 package com.camachoyury.photoseverywhere.viewmodel
 
-import android.provider.ContactsContract
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.camachoyury.photoseverywhere.data.entities.Photo
@@ -16,19 +15,20 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class PhotosViewModel @Inject constructor(private val photosRepository: PhotosRepositoryImpl): ViewModel(){
-
+class PhotosViewModel @Inject constructor(private val photosRepository: PhotosRepositoryImpl) : ViewModel() {
 
     private val _photos: MutableStateFlow<ScreenState> = MutableStateFlow(ScreenState.Loading)
     val photos: StateFlow<ScreenState> = _photos.asStateFlow()
 
-
     @ExperimentalCoroutinesApi
     fun load() = viewModelScope.launch {
-        _photos.value = ScreenState.Loading
-        photosRepository.getPhotos().collect { _photos.value = ScreenState.Success(it) }
+            _photos.value = ScreenState.Loading
+        photosRepository
+            .getPhotos()
+            .collect {
+                _photos.value = ScreenState.Success(it)
+            }
     }
-
 }
 
 sealed class ScreenState {
