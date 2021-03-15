@@ -23,7 +23,6 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: PhotosViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
-    lateinit var recyclerView: RecyclerView
     lateinit var adapter: PhotosAdapter
 
     @InternalCoroutinesApi
@@ -57,8 +56,5 @@ class MainActivity : AppCompatActivity() {
 
     private fun updatePhotos(photos:List<Photo> ){
         adapter.submitList(photos)
-//        binding.photosList.adapter = adapter
-        Log.d("Photo", photos[0].toString())
-
     }
 }
