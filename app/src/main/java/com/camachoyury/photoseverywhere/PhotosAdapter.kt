@@ -1,10 +1,10 @@
 package com.camachoyury.photoseverywhere
 
+import android.R.attr.data
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import com.camachoyury.photoseverywhere.data.entities.Photo
 import com.camachoyury.photoseverywhere.databinding.ItemBinding
@@ -16,7 +16,8 @@ import java.io.IOException
 import java.net.URL
 
 
-class PhotosAdapter(var photos: List<Photo>) : RecyclerView.Adapter<PhotosAdapter.PhotosViewHolder>() {
+class PhotosAdapter(var photos: List<Photo>) :
+    RecyclerView.Adapter<PhotosAdapter.PhotosViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotosViewHolder {
         val binding = ItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -26,11 +27,12 @@ class PhotosAdapter(var photos: List<Photo>) : RecyclerView.Adapter<PhotosAdapte
     override fun onBindViewHolder(holder: PhotosViewHolder, position: Int) {
         with(holder) {
             with(photos[position]) {
-                binding.name.text = name.first
-                GlobalScope.launch(Dispatchers.IO) {
-                    loadImage(binding.image, picture.thumbnail)
-                }
-                binding.root.setOnClickListener {
+                GlobalScope.launch() {
+                    val image = loadImage(picture.thumbnail)
+                    withContext(Dispatchers.Main){
+                        binding.image.setImageBitmap(image)
+                    }
+
                 }
             }
         }
@@ -47,20 +49,12 @@ class PhotosAdapter(var photos: List<Photo>) : RecyclerView.Adapter<PhotosAdapte
 
 }
 
-suspend fun loadImage(imageView: ImageView, url: String) {
 
+suspend fun loadImage(url: String): Bitmap = withContext(Dispatchers.IO) {
     val urlImage: URL = URL(url)
-    val result: Bitmap? = withContext(Dispatchers.IO) {
-        println("'runBlocking': I'm working in thread ${Thread.currentThread().name}")
-        urlImage.toBitmap()
-    }
-
-    GlobalScope.launch(Dispatchers.Main) {
-        imageView.setImageBitmap(result)
-    }
+    urlImage.toBitmap()!!
 }
 
-// extension function to get bitmap from url
 private fun URL.toBitmap(): Bitmap? {
     return try {
         BitmapFactory.decodeStream(openStream())
