@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:name=".PhotoApp"
         android:theme="@style/Theme.PhotosEverywhere">
-        <activity android:name=".MainActivity">
+        <activity android:name=".view.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
