@@ -37,17 +37,13 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             PhotosTheme {
-//                // A surface container using the 'background' color from the theme
-//                Surface(color = MaterialTheme.colors.background) {
-//                    Greeting("YURY")
-//                }
-                Scaffold (
-                    topBar = {ToolBar()},
+                Scaffold(
+                    topBar = { ToolBar() },
                     content = {
                         Greeting("YURY")
                     }
 
-                        )
+                )
             }
         }
 
@@ -67,8 +63,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-
-
 
 
 @Composable
@@ -92,19 +86,17 @@ fun DefaultPreview() {
 @Composable
 fun ToolBar() {
 
-
     TopAppBar(
-        modifier = Modifier.padding(3.dp),
         navigationIcon = {
             Icon(
                 modifier = Modifier.padding(start = 8.dp),
                 painter = painterResource(id = R.drawable.ic_baseline_message_24),
-                contentDescription = null // decorative element
+                contentDescription = null
             )
         },
         actions = {
             Surface(
-                modifier = Modifier.size(50.dp),
+                modifier = Modifier.size(54.dp),
                 shape = CircleShape,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f)
             ) {
@@ -116,7 +108,6 @@ fun ToolBar() {
         },
         title = { Text(text = "Google Photos") },
         elevation = 16.dp
-
     )
 }
 
