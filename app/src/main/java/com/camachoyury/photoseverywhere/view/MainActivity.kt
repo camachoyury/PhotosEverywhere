@@ -43,7 +43,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.consumePositionChange
 import androidx.compose.ui.layout.ContentScale
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @AndroidEntryPoint
@@ -61,7 +63,7 @@ class MainActivity : AppCompatActivity() {
                 Scaffold(
                     topBar = { ToolBar() },
                     content = {
-                        Drag(imageId = R.drawable.dog1)
+                        Drag(imageId = R.drawable.dog, { print("LIKE")},{ print("NO LIKE")} )
                     }
                 )
             }
@@ -87,7 +89,7 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun DefaultPreview() {
     PhotosTheme {
-        Drag(imageId = R.drawable.dog1)
+        Drag(imageId = R.drawable.dog1,{ print("LIKE")},{ print("NO LIKE")})
     }
 }
 
@@ -123,14 +125,19 @@ fun ToolBar() {
 }
 
 @Composable
-fun Drag(@DrawableRes imageId: Int) {
+fun Drag(@DrawableRes imageId: Int, actionLike: () -> Unit, actionNoLike: () -> Unit) {
 
-    Box(modifier = Modifier.background(Color.White).padding(8.dp).fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier
+        .background(Color.White)
+        .padding(8.dp)
+        .fillMaxSize()) {
         var offsetX by remember { mutableStateOf(0f) }
         var offsetY by remember { mutableStateOf(0f) }
         val scale by remember { mutableStateOf(1f) }
         var rotation by remember { mutableStateOf(0f) }
         var offset by remember { mutableStateOf(  Offset.Zero) }
+        val maxWidth = constraints.maxWidth.toFloat()
+        val maxHeight = constraints.maxHeight.toFloat()
 
         Card(
             Modifier
@@ -143,22 +150,26 @@ fun Drag(@DrawableRes imageId: Int) {
                     scaleY = scale,
                     rotationZ = rotation,
                     translationX = offset.x,
-                    translationY = offset.y
+                    translationY = offset.y,
+                    alpha = ((maxWidth - abs(offsetX)) / maxWidth).coerceIn(0f, 1f)
                 )
                 .pointerInput(Unit) {
                     detectDragGestures(onDragEnd = {
-                        rotation =  0f
-                        offsetX = scale
-                        offsetY = scale
+                        when{
+                            abs(offsetX) < maxWidth / 2 ->{
+                                rotation =  0f
+                                offsetX = scale
+                                offsetY = scale
+                            }
+                            offsetX > 0 ->{actionLike() }
+                            offsetX < 0 ->{ actionNoLike() }
+                        }
+
                     }) { change, dragAmount ->
-                        change.consumeAllChanges()
-                        rotation = if (offsetX > 0){
-                            -20f
-                        }else 20f
+                        change.consumePositionChange()
+                        rotation = (offsetX/60).coerceIn(-40f,40f)
                         offsetX = offsetX.plus(dragAmount.x)
                         offsetY = offsetY.plus(dragAmount.y)
-//
-
                     }
                 },
             backgroundColor= Color.White,
@@ -172,13 +183,16 @@ fun Drag(@DrawableRes imageId: Int) {
             )
 
             Row(
-                Modifier.wrapContentHeight(align = Alignment.Bottom).background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.1f),
-                            Color.Black
+                Modifier
+                    .wrapContentHeight(align = Alignment.Bottom)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.1f),
+                                Color.Black
+                            )
                         )
-                    )),
+                    ),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.Bottom
             ) {
@@ -194,23 +208,33 @@ fun Drag(@DrawableRes imageId: Int) {
     }
 }
 
+fun onDragAction(action: Action) {
+
+}
+
 @Composable
 fun Button(icon: ImageVector, tint: Color ){
 
     Surface(
-        modifier = Modifier.padding(12.dp).size(54.dp),
+        modifier = Modifier
+            .padding(12.dp)
+            .size(54.dp),
         border = BorderStroke(2.dp, tint),
         shape = CircleShape,
         color = Color.White.copy(alpha = 0.1f)
     ) {
         Icon(
             icon,
-            modifier=Modifier.padding(4.dp).size(24.dp),
+            modifier= Modifier
+                .padding(4.dp)
+                .size(24.dp),
             tint = tint,
             contentDescription = "Localized description")
     }
 }
 
+
+enum class Action { LIKE, NO_LIKE, SUPER_LIKE }
 
 
 
